@@ -116,11 +116,7 @@ def get_edit_days(response: dict, r_url: str, r_params: str) -> tuple:
         for contribution in response["query"]["usercontribs"]:
             date = contribution["timestamp"][:10]
 
-            if date not in edit_days.keys():
-                edit_days[date] = 1
-            else:
-                edit_days[date] = edit_days[date] + 1
-
+            edit_days[date] = 1 if date not in edit_days.keys() else edit_days[date] + 1
         if "continue" not in response:
             break
 
@@ -156,30 +152,26 @@ def calculate_streak(year: str, edit_days: dict) -> str:
     if year == str(datetime.now().year):
         last = datetime.now()
         while 1:
-            if str(last)[:10] in edit_days:
-                streak_number += 1
-                last = last - timedelta(days=1)
-            else:
+            if str(last)[:10] not in edit_days:
                 break
 
-        streak_edits = f"Current streak: {streak_number}"
+            streak_number += 1
+            last = last - timedelta(days=1)
+        return f"Current streak: {streak_number}"
     else:
         streak_count = 0
         last = datetime.strptime(list(edit_days.keys())[0], "%Y-%m-%d")
-        for day in range(len(list(edit_days.keys()))):
+        for item in list(edit_days.keys()):
             if str(last)[:10] in edit_days:
                 streak_count += 1
                 last = last - timedelta(days=1)
 
-                if (streak_number < streak_count):
-                    streak_number = streak_count
+                streak_number = max(streak_number, streak_count)
             else:
-                last = datetime.strptime(list(edit_days.keys())[day], "%Y-%m-%d") - timedelta(days=1)
+                last = datetime.strptime(item, "%Y-%m-%d") - timedelta(days=1)
                 streak_count = 1
 
-        streak_edits = f"Longest streak: {streak_number}"
-
-    return streak_edits
+        return f"Longest streak: {streak_number}"
 
 
 def get_day_levels(edit_days: dict) -> list:
@@ -234,16 +226,14 @@ def format_data_html(year: str, month_names: dict, edit_days: dict, day_levels: 
     edit_data = ""
     year_days = calendar.Calendar().yeardayscalendar(int(year), width=12)
 
-    month_count = 1
-    for month in year_days[0]:
+    for month_count, month in enumerate(year_days[0], start=1):
         lower_month = month_names[str(month_count)].lower()
 
         edit_data += f"<div id=\"{lower_month}\" class=\"month\">"
         edit_data += f"<h2 class=\"month-title\">{month_names[str(month_count)]}</h2>"
         edit_data += "<div class=\"month-container\">"
 
-        week_count = 1
-        for week in month:
+        for week_count, week in enumerate(month, start=1):
             edit_data += f"<div id=\"{lower_month}-week-{week_count}\" class=\"week\">"
 
             for day in week:
@@ -272,7 +262,7 @@ def format_data_html(year: str, month_names: dict, edit_days: dict, day_levels: 
                         edit_level = "day-level-3"
                     elif edit_days[number_day] >= day_levels[4]:
                         edit_level = "day-level-2"
-                    elif edit_days[number_day] < day_levels[4] and edit_days[number_day] > 1:
+                    elif edit_days[number_day] > 1:
                         edit_level = "day-level-1"
                     elif edit_days[number_day] == 1:
                         edit_level = "day-level-1"
@@ -285,10 +275,6 @@ def format_data_html(year: str, month_names: dict, edit_days: dict, day_levels: 
                 """
 
             edit_data += "</div>"
-            week_count += 1
-
         edit_data += "</div>"
         edit_data += "</div>"
-        month_count += 1
-
     return edit_data
